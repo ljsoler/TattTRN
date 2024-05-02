@@ -23,17 +23,20 @@
 ## TattTRN testing ##
 1. Download Webtattoo or BIVTatt.
 2. Organise the database in the following format:
----- Database (BIVTatt or Webtattoo)
---------Tattoo-ID-1
------------ image1.jpg
------------ image2.jpg
---------Tattoo-ID-2
------------ image3.jpg
------------ image4.jpg
-...
---------Tattoo-ID-N
------------ images...jpg
------------ image....jpg
+
+```
+.
+├── train                   # Training set folder
+│   ├── Tattoo-ID-1         # Tattoo ID category
+│       ├── images1.jpg     # images
+│       ├── images1.jpg             
+│       └── ...             # etc.
+│   ├── Tattoo-ID-2         # More tattoo categories
+│       └── ...             # etc.
+├── test                    # Test set folder similar to the training folder
+│   └── ...                 # etc.     
+
+```  
 
 2. run: python test.py --images_dir image-folder --output_dir output-folder --checkpoint_folder path-to-checkpoint --backbone efficientnet_v2_s --csv_file path-to-csv --num_features 512 --M 0.1
 
