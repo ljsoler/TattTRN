@@ -44,7 +44,7 @@
 
 ## Pre-trained Models ##
 
-Pre-trained models can be found in ./models 
+Pre-trained models for the best parameter settings can be found in [Google Drive](https://drive.google.com/drive/folders/1BeaHueUogVKZ_G6Ja2kE8zHF3xYzDDiT?usp=sharing) 
 
 <hr/>
 
