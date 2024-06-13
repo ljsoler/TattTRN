@@ -204,6 +204,7 @@ class CallBackVerification(pl.Callback):
         super().__init__()
         self.data_module = data_module
 
+
     def on_validation_epoch_end(self, trainer, pl_module):
         dataset = {}
         for batch in self.data_module.val_dataloader():
@@ -228,6 +229,61 @@ class CallBackVerification(pl.Callback):
         fmr20 = torch.tensor(stat.fmr20*100, dtype=torch.float)
         fmr100 = torch.tensor(stat.fmr100*100, dtype=torch.float)
         pl_module.log_dict({'eer': eer, 'fmr20': fmr20, 'fmr10': fmr10, 'fmr100': fmr100})
+
+
+    def on_test_epoch_end(self, trainer, pl_module):
+        dataset = {}
+        for batch in self.data_module:
+            x, l = batch
+            x = x.to(device=pl_module.device)
+            l = l.to(device=pl_module.device)
+            _, _, feat_template, feat_image = pl_module(x)
+            features = torch.cat((feat_image, feat_template), dim=1)
+            features = F.normalize(features)
+            features = features.detach().cpu().numpy()
+            label = l.detach().cpu().numpy()
+            for i in range(label.shape[0]):
+                if label[i] in dataset:
+                    dataset[label[i]].append(features[i])
+                else:
+                    dataset[label[i]] = [features[i]]
+        
+        gen, imp = self.perform_verification(dataset)
+        stat = get_eer_stats(gen, imp)
+        eer = torch.tensor(stat.eer*100, dtype=torch.float)
+        fmr10 = torch.tensor(stat.fmr10*100, dtype=torch.float)
+        fmr20 = torch.tensor(stat.fmr20*100, dtype=torch.float)
+        fmr100 = torch.tensor(stat.fmr100*100, dtype=torch.float)
+
+        del dataset
+        pl_module.log_dict({'EER_VER': eer, 'FMR20': fmr20, 'FMR10': fmr10, 'FMR100': fmr100})
+
+    #verification performance
+    @staticmethod
+    def perform_verification(dataset):
+
+        keys = list(dataset.keys())
+        random.shuffle(keys)
+        genuine_list, impostors_list = [], []
+        #Compute mated comparisons
+        for k in keys:
+            for i in range(len(dataset[k]) - 1):
+                reference = dataset[k][i]
+                for j in range(i + 1, len(dataset[k])):
+                    probe = dataset[k][j]
+                    value = np.dot(probe,reference)/(norm(probe)*norm(reference))
+                    genuine_list.append(value)
+
+        #Compute non-mated comparisons
+        for i in range(len(keys)):
+            reference = random.choice(dataset[keys[i]])
+            for j in range(len(keys)):
+                if i != j:
+                    probe = random.choice(dataset[keys[j]])
+                    value = np.dot(probe,reference)/(norm(probe)*norm(reference))
+                    impostors_list.append(value)
+
+        return genuine_list, impostors_list
 
 
 import json
