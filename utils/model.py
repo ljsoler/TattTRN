@@ -74,7 +74,7 @@ class TTN_wrapper(pl.LightningModule):
         self.criterion = CrossEntropyLoss()
         self.mse_criterion = MSELoss()
         # Important: This property activates manual optimization.
-        self.automatic_optimization = False
+        # self.automatic_optimization = False
         self.L = L
 
     def forward(self, x):
@@ -85,8 +85,8 @@ class TTN_wrapper(pl.LightningModule):
 
     def training_step(self, batch, batch_idx):
         x, template, target = batch
-        opt_backbone_raw, opt_backbone_rec, opt_header = self.optimizers()
-        scheduler_backbone_raw, scheduler_backbone_rec, scheduler_header = self.lr_schedulers()
+        # opt_backbone_raw, opt_backbone_rec, opt_header = self.optimizers()
+        # scheduler_backbone_raw, scheduler_backbone_rec, scheduler_header = self.lr_schedulers()
 
         recons_t, recons_i, emb_template = self.backbone_trans(x)
         emb_image = self.backbone_raw(x)
@@ -104,24 +104,24 @@ class TTN_wrapper(pl.LightningModule):
         loss = (loss_feat_img + loss_feat_temp + self.L*loss_rec)/3 #We can try with different lambda values
 
         #header and backbone optimisation
-        opt_backbone_rec.zero_grad()
-        opt_backbone_raw.zero_grad()
-        opt_header.zero_grad()
-        self.manual_backward(loss)
+        # opt_backbone_rec.zero_grad()
+        # opt_backbone_raw.zero_grad()
+        # opt_header.zero_grad()
+        # self.manual_backward(loss)
 
         clip_grad_norm_(self.backbone_raw.parameters(), max_norm=5, norm_type=2)
-        self.clip_gradients(opt_backbone_raw, gradient_clip_val=0.5, gradient_clip_algorithm="norm")
-        self.clip_gradients(opt_backbone_rec, gradient_clip_val=0.5, gradient_clip_algorithm="norm")
+        # self.clip_gradients(opt_backbone_raw, gradient_clip_val=0.5, gradient_clip_algorithm="norm")
+        # self.clip_gradients(opt_backbone_rec, gradient_clip_val=0.5, gradient_clip_algorithm="norm")
 
-        opt_backbone_raw.step()
-        opt_backbone_rec.step()
-        opt_header.step()
+        # opt_backbone_raw.step()
+        # opt_backbone_rec.step()
+        # opt_header.step()
 
         # step every N epochs
-        if self.trainer.is_last_batch and (self.trainer.current_epoch + 1) % 4 == 0:
-            scheduler_backbone_raw.step()
-            scheduler_backbone_rec.step()
-            scheduler_header.step()
+        # if self.trainer.is_last_batch and (self.trainer.current_epoch + 1) % 4 == 0:
+        #     scheduler_backbone_raw.step()
+        #     scheduler_backbone_rec.step()
+        #     scheduler_header.step()
             
         self.log_dict({"train_loss": loss, "raw_features_loss": loss_feat_img, "template_features_loss": loss_feat_temp, "template_loss": self.L*loss_rec},
                           prog_bar=True)
@@ -134,38 +134,43 @@ class TTN_wrapper(pl.LightningModule):
 
 
     def configure_optimizers(self):
-        opt_backbone_raw = torch.optim.Adam(self.backbone_raw.parameters(), lr=1e-5) 
-        opt_backbone_rec = torch.optim.Adam(self.backbone_trans.parameters(), lr=1e-5) 
-        opt_header = torch.optim.Adam(self.header.parameters(), lr=1e-5) 
+        params = list(self.backbone_raw.parameters())
+        params += list(self.backbone_trans.parameters())
+        params += list(self.header.parameters())
 
-        scheduler_backbone_raw = torch.optim.lr_scheduler.ExponentialLR(optimizer=opt_backbone_raw, gamma = 0.95)
-        scheduler_backbone_rec = torch.optim.lr_scheduler.ExponentialLR(optimizer=opt_backbone_rec, gamma = 0.95)
-        scheduler_header = torch.optim.lr_scheduler.ExponentialLR(optimizer=opt_header, gamma = 0.95)
+        return torch.optim.Adam(params, lr=1e-5) 
+    #     opt_backbone_raw = torch.optim.Adam(self.backbone_raw.parameters(), lr=1e-5) 
+    #     opt_backbone_rec = torch.optim.Adam(self.backbone_trans.parameters(), lr=1e-5) 
+    #     opt_header = torch.optim.Adam(self.header.parameters(), lr=1e-5) 
 
-        return (
-        {
-            "optimizer": opt_backbone_raw,
-            "lr_scheduler": {
-                "scheduler": scheduler_backbone_raw,
-                "interval": "epoch",
-                "frequency": 1
-            },
-        },
-        {
-            "optimizer": opt_backbone_rec,
-            "lr_scheduler": {
-                "scheduler": scheduler_backbone_rec,
-                "interval": "epoch",
-                "frequency": 1
-            },
-        },
-        {
-            "optimizer": opt_header, 
-            "lr_scheduler": scheduler_header,
-            "interval": "epoch",
-            "frequency": 1
-         }
-    )
+    #     scheduler_backbone_raw = torch.optim.lr_scheduler.ExponentialLR(optimizer=opt_backbone_raw, gamma = 0.95)
+    #     scheduler_backbone_rec = torch.optim.lr_scheduler.ExponentialLR(optimizer=opt_backbone_rec, gamma = 0.95)
+    #     scheduler_header = torch.optim.lr_scheduler.ExponentialLR(optimizer=opt_header, gamma = 0.95)
+
+    #     return (
+    #     {
+    #         "optimizer": opt_backbone_raw,
+    #         "lr_scheduler": {
+    #             "scheduler": scheduler_backbone_raw,
+    #             "interval": "epoch",
+    #             "frequency": 1
+    #         },
+    #     },
+    #     {
+    #         "optimizer": opt_backbone_rec,
+    #         "lr_scheduler": {
+    #             "scheduler": scheduler_backbone_rec,
+    #             "interval": "epoch",
+    #             "frequency": 1
+    #         },
+    #     },
+    #     {
+    #         "optimizer": opt_header, 
+    #         "lr_scheduler": scheduler_header,
+    #         "interval": "epoch",
+    #         "frequency": 1
+    #      }
+    # )
 
 
     def test_step(self, batch, batch_idx):
